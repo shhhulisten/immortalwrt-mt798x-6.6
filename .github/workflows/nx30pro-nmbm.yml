@@ -30,13 +30,10 @@ jobs:
             python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
             texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
        
-      - name: Clone PassWall
-        env:
-          GIT_TOKEN: ${{ secrets.PASSWALL_TOKEN }}
+      - name: Clone PassWall & Dependencies
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
-          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci
+          # 克隆包含 PassWall 和 Xray 的整合包到 package 目录
+          git clone --depth=1 https://github.com/sbwml/openwrt_helloworld.git package/helloworld
       - name: Update and install feeds
         run: |
           ./scripts/feeds update -a
