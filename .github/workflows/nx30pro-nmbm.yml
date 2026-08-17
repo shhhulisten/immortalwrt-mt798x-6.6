@@ -30,10 +30,10 @@ jobs:
             python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
             texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
        
-      - name: Clone PassWall packages
+      - name: Clone PassWall
         run: |
           git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
-          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall.git package/passwall
+          git clone --depth=1 -b main https://github.com/xiaorouji/openwrt-passwall.git package/passwall-luci
 
       - name: Update and install feeds
         run: |
