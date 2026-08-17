@@ -29,6 +29,11 @@ jobs:
             p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils \
             python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
             texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
+       
+      - name: Clone PassWall packages
+        run: |
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall.git package/passwall
 
       - name: Update and install feeds
         run: |
