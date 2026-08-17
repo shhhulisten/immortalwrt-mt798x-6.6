@@ -31,14 +31,12 @@ jobs:
             texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
        
       - name: Clone PassWall
-        env:
-          GIT_TERMINAL_PROMPT: 0
         run: |
-          git clone --depth=1 https://${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages || \
-          git clone --depth=1 https://${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
-    
-          git clone --depth=1 https://${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci || \
-          git clone --depth=1 https://${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages || \
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
+
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci || \
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci
           
       - name: Update and install feeds
         run: |
