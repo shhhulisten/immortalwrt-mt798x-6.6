@@ -34,13 +34,11 @@ jobs:
         env:
           GIT_TERMINAL_PROMPT: 0
         run: |
-          # 1. 克隆依赖包
-          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages || \
-          git clone --depth=1 https://ghfast.top/https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
-
-          # 2. 克隆 Passwall 源码 (优先尝试 passwall2，若失败则拉取通用镜像)
-          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci || \
-          git clone --depth=1 https://ghfast.top/https://github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci
+          git clone --depth=1 https://${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages || \
+          git clone --depth=1 https://${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
+    
+          git clone --depth=1 https://${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci || \
+          git clone --depth=1 https://${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci
           
       - name: Update and install feeds
         run: |
