@@ -34,9 +34,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone --depth=1 https://${GITHUB_TOKEN}@github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
-          git clone --depth=1 https://${GITHUB_TOKEN}@github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci
-          
+          git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2.git package/passwall-luci
+          git config --global --unset-all url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf
       - name: Update and install feeds
         run: |
           ./scripts/feeds update -a
