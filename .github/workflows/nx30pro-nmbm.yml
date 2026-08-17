@@ -32,8 +32,8 @@ jobs:
        
       - name: Clone PassWall
         run: |
-          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
-          git clone --depth=1 -b main https://github.com/xiaorouji/openwrt-passwall.git package/passwall-luci
+          git clone --depth=1 https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
+          git clone --depth=1 -b main https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/xiaorouji/openwrt-passwall.git package/passwall-luci
 
       - name: Update and install feeds
         run: |
