@@ -30,6 +30,11 @@ jobs:
             python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
             texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
        
+      - name: Configure Git
+        run: |
+          git config --global core.gitCommandTimeout 300
+          git config --global http.timeout 300
+
       - name: Clone PassWall
         run: |
           git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages || \
