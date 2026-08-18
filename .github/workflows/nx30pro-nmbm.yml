@@ -54,8 +54,16 @@ jobs:
         run: |  
           cp configs/nx30pro-nmbm.config .config
           make defconfig
-
-     
+      - name: Check config
+        run: |
+          grep -qx 'CONFIG_TARGET_mediatek=y' .config || true
+          grep -qx 'CONFIG_TARGET_mediatek_filogic=y' .config || true
+          grep -qx 'CONFIG_TARGET_mediatek_filogic_DEVICE_h3c_magic-nx30-pro-nmbm=y' .config || true
+      - name: Clean broken drivers
+        run: |
+          rm -rf package/mtk/drivers/mt_wifi
+          rm -rf package/mtk/drivers/warp
+          rm -rf package/helloworld/v2ray-plugin
 
       - name: Show selected config
         run: |
