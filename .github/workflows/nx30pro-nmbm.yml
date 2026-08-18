@@ -30,16 +30,19 @@ jobs:
             python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
             texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
        
-      - name: Clone PassWall
-        run: |
-          # 克隆包含 PassWall 和 Xray 的整合包到 package 目录
-          git clone --depth=1 https://github.com/sbwml/openwrt_helloworld.git package/helloworld
-          # 删除失效且不需要的 v2ray-plugin 源码，防止编译报错
-          rm -rf package/helloworld/v2ray-plugin
-      - name: Update and install feeds
+      - name: Update Feeds & Setup Golang
         run: |
           ./scripts/feeds update -a
+          # 替换为支持最新 Xray-core 编译的高版本 Golang (Go 1.23+)
+          rm -rf feeds/packages/lang/golang
+          git clone --depth=1 https://github.com/sbwml/packages_lang_golang -b 23.x feeds/packages/lang/golang
           ./scripts/feeds install -a
+
+      - name: Clone PassWall
+        run: |
+          git clone --depth=1 https://github.com/sbwml/openwrt_helloworld.git package/helloworld
+          # 移除不需要且易冲突的老旧插件
+          rm -rf package/helloworld/v2ray-plugin
 
       - name: Load verified NX30 Pro config
         run: |  
