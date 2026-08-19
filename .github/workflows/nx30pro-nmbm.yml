@@ -86,7 +86,7 @@ jobs:
           set -o pipefail
           # 1. 尝试 4 线程并发编译
           # 2. 若失败，自动回退到单线程（-j1 V=s）准确定位并把最终错误直接打印在日志末尾
-          make -j4 V=s 2>&1 | tee build.log || make -j1 V=s 2>&1 | tee -a build.log
+          make -j$(nproc) || make -j1 V=s
 
 
       - name: Show generated images
