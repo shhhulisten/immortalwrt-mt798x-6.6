@@ -75,7 +75,12 @@ jobs:
       - name: Download sources
         run: |
           make download -j"$(nproc)"
-
+      - name: Download package dl files
+        run: |
+          # 预先多线程下载所有源码包，避免在编译过程中卡网络
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
       - name: Build firmware
         run: |
           set -o pipefail
