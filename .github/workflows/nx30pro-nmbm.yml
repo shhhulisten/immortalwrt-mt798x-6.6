@@ -64,7 +64,34 @@ jobs:
           rm -rf package/mtk/drivers/mt_wifi
           rm -rf package/mtk/drivers/warp
           rm -rf package/helloworld/v2ray-plugin
-
+      - name: Load custom configuration
+        run: |
+          [ -e .config ] && cp .config .config.orig || true
+          
+          # 1. 物理移除报错的闭源驱动与废弃插件
+          rm -rf package/mtk/drivers/mt_wifi package/mtk/drivers/warp package/helloworld/v2ray-plugin
+          
+          # 2. 写入开源无线及基础配置
+          cat <<EOF >> .config
+          CONFIG_TARGET_mediatek=y
+          CONFIG_TARGET_mediatek_filogic=y
+          CONFIG_TARGET_mediatek_filogic_DEVICE_h3c_magic-nx30-pro-nmbm=y
+          CONFIG_PACKAGE_kmod-mt7915e=y
+          CONFIG_PACKAGE_kmod-mt7981-firmware=y
+          CONFIG_PACKAGE_kmod-cfg80211=y
+          CONFIG_PACKAGE_kmod-mac80211=y
+          CONFIG_PACKAGE_wpad-openssl=y
+          CONFIG_PACKAGE_hostapd-common=y
+          CONFIG_PACKAGE_iw=y
+          CONFIG_PACKAGE_iwinfo=y
+          CONFIG_PACKAGE_wireless-regdb=y
+          # CONFIG_PACKAGE_kmod-mt_wifi is not set
+          # CONFIG_PACKAGE_kmod-conninfra is not set
+          # CONFIG_PACKAGE_luci-app-mtwifi-cfg is not set
+          EOF
+          
+          # 3. 展开并校验依赖
+          make defconfig
       - name: Show selected config
         run: |
           echo "==== target/profile ===="
