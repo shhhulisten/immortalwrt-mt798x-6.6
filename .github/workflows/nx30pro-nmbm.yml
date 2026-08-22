@@ -57,7 +57,8 @@ jobs:
           # 载入干净的 NX30 Pro 配置文件
           cp -f configs/nx30pro-nmbm.config .config
           make defconfig
-
+          # 验证 mt7915e 驱动是否成功进入编译清单
+          grep 'CONFIG_PACKAGE_kmod-mt7915e=y' .config || (echo "ERROR: mt7915e was stripped by defconfig!" && exit 1)
       - name: Download source packages
         run: |
           # 预先多线程拉取源码包，避免编译过程中卡网络
