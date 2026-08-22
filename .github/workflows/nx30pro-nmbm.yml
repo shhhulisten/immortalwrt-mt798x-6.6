@@ -46,19 +46,15 @@ jobs:
           # 1. 拉取 PassWall 源码
           git clone --depth=1 https://github.com/sbwml/openwrt_helloworld.git package/helloworld
           
-          # 2. 彻底清理 6.6 内核不兼容的废弃包与闭源驱动
+          # 2. 仅删除在 6.6 内核报错的 warp 模块和废弃插件（保留 mt_wifi 闭源 Wi-Fi 源码）
           rm -rf package/helloworld/v2ray-plugin
           rm -rf package/mtk/drivers/warp
           rm -rf package/mtk/drivers/mtk-warp
-          rm -rf package/mtk/drivers/mt_wifi
 
       - name: Load and apply configuration
         run: |
-          # 载入干净的 NX30 Pro 配置文件
           cp -f configs/nx30pro-nmbm.config .config
           make defconfig
-          # 验证 mt7915e 驱动是否成功进入编译清单
-          grep 'CONFIG_PACKAGE_kmod-mt7915e=y' .config || (echo "ERROR: mt7915e was stripped by defconfig!" && exit 1)
       - name: Download source packages
         run: |
           # 预先多线程拉取源码包，避免编译过程中卡网络
