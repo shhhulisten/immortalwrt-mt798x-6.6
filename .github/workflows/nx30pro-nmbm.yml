@@ -36,56 +36,55 @@ jobs:
       - name: Update Feeds & Setup Golang
         run: |
           ./scripts/feeds update -a
-          # 替换为适配最新 Xray-core 的高版本 Golang (Go 1.23+)
+          # 替换为支持最新 Xray-core 编译的高版本 Golang (Go 1.23+)
           rm -rf feeds/packages/lang/golang
           git clone --depth=1 https://github.com/sbwml/packages_lang_golang -b 23.x feeds/packages/lang/golang
           ./scripts/feeds install -a
 
-      - name: Clone PassWall & Clean Conflict Drivers
+      - name: Clone PassWall
         run: |
-          # 1. 拉取 PassWall 源码
+          # 仅拉取 PassWall 并移除冲突插件
           git clone --depth=1 https://github.com/sbwml/openwrt_helloworld.git package/helloworld
-          
-          # 2. 彻底删除 6.6 内核无法编译的 MTK 闭源驱动包
-          rm -rf package/mtk/drivers/mt_wifi
-          rm -rf package/mtk/drivers/warp
-          rm -rf package/mtk/drivers/mtk-warp
           rm -rf package/helloworld/v2ray-plugin
 
-          # 3. 解除 target 对开源无线驱动的屏蔽与默认闭源绑定
-          sed -i '/kmod-mt_wifi/d' target/linux/mediatek/filogic/target.mk || true
-          sed -i '/mtwifi-cfg/d' target/linux/mediatek/filogic/target.mk || true
-          sed -i '/kmod-conninfra/d' target/linux/mediatek/filogic/target.mk || true
-
-      - name: Load and apply configuration
+      - name: Load Official MT7981 Defconfig & Apply Custom Packages
         run: |
-          # 载入基础配置文件
-          cp -f configs/nx30pro-nmbm.config .config
-          make defconfig
+          # 1. 使用仓库自带的完整 MT7981 官方闭源无线底包
+          if [ -f "defconfig/mt7981-ax3000.config" ]; then
+            cp -f defconfig/mt7981-ax3000.config .config
+          else
+            cp -f configs/nx30pro-nmbm.config .config
+          fi
 
-          # 4. 强制追加开源无线驱动（防止被 defconfig 冲刷掉）
+          # 2. 追加自定义 PassWall 与常用工具
           cat <<EOF >> .config
-          CONFIG_PACKAGE_kmod-mt7915e=y
-          CONFIG_PACKAGE_kmod-mt7981-firmware=y
-          CONFIG_PACKAGE_kmod-cfg80211=y
-          CONFIG_PACKAGE_kmod-mac80211=y
-          CONFIG_PACKAGE_wpad-openssl=y
-          CONFIG_PACKAGE_hostapd-common=y
-          CONFIG_PACKAGE_wireless-regdb=y
-          CONFIG_PACKAGE_iw=y
-          CONFIG_PACKAGE_iwinfo=y
-          # CONFIG_PACKAGE_kmod-mt_wifi is not set
-          # CONFIG_PACKAGE_kmod-conninfra is not set
-          # CONFIG_PACKAGE_luci-app-mtwifi-cfg is not set
+          CONFIG_TARGET_mediatek=y
+          CONFIG_TARGET_mediatek_filogic=y
+          CONFIG_TARGET_mediatek_filogic_DEVICE_h3c_magic-nx30-pro-nmbm=y
+
+          # ===== PassWall 核心 =====
+          CONFIG_PACKAGE_luci-app-passwall=y
+          CONFIG_PACKAGE_luci-i18n-passwall-zh-cn=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y
+          CONFIG_PACKAGE_xray-core=y
+          CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Geoview=y
+
+          # ===== 常用管理工具 =====
+          CONFIG_PACKAGE_luci-app-ttyd=y
+          CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y
+          CONFIG_PACKAGE_ttyd=y
+          CONFIG_PACKAGE_htop=y
+          CONFIG_PACKAGE_nano=y
+          CONFIG_PACKAGE_curl=y
+          CONFIG_PACKAGE_ca-bundle=y
+          CONFIG_PACKAGE_ca-certificates=y
           EOF
 
-          # 再次展开依赖
+          # 3. 展开并补齐所有依赖
           make defconfig
 
-          
       - name: Download source packages
         run: |
-          # 预先多线程拉取源码包，避免编译过程中卡网络
           make download -j8
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
@@ -93,7 +92,6 @@ jobs:
       - name: Build firmware
         run: |
           set -o pipefail
-          # 自动获取全部核心并发编译，失败时自动切单线程输出清晰排错日志
           make -j$(nproc) || make -j1 V=s
 
       - name: Show generated images
