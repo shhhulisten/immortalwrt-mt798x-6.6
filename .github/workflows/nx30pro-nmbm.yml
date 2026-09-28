@@ -1,3 +1,4 @@
+```yaml
 name: Build NX30 Pro NMBM
 
 on:
@@ -8,109 +9,759 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+
+      # ============================================================
+      # 1. Checkout
+      # ============================================================
+
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
+
+      # ============================================================
+      # 2. Free disk space
+      # ============================================================
+
       - name: Free up disk space
         run: |
-          sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /usr/local/lib/android
-          sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mysql* php*
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /etc/mysql \
+            /etc/php \
+            /usr/local/lib/android
+
+          sudo -E apt-get -y purge \
+            azure-cli \
+            ghc* \
+            zulu* \
+            llvm* \
+            firefox \
+            google* \
+            dotnet* \
+            powershell \
+            openjdk* \
+            mysql* \
+            php* \
+            || true
+
           sudo -E apt-get clean
+
+          df -h
+
+
+      # ============================================================
+      # 3. Build dependencies
+      # ============================================================
 
       - name: Install build dependencies
         run: |
           sudo apt update
-          sudo apt install -y \
-            ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
-            bzip2 ccache clang cmake cpio curl device-tree-compiler ecj fastjar flex gawk \
-            gettext gcc-multilib g++-multilib git gnutls-dev gperf haveged help2man intltool \
-            lib32gcc-s1 libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
-            libmpc-dev libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libssl-dev \
-            libtool libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano ninja-build \
-            p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils \
-            python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
-            texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
 
-      - name: Update Feeds & Setup Golang
+          sudo apt install -y \
+            ack \
+            antlr3 \
+            asciidoc \
+            autoconf \
+            automake \
+            autopoint \
+            binutils \
+            bison \
+            build-essential \
+            bzip2 \
+            ccache \
+            clang \
+            cmake \
+            cpio \
+            curl \
+            device-tree-compiler \
+            ecj \
+            fastjar \
+            flex \
+            gawk \
+            gettext \
+            gcc-multilib \
+            g++-multilib \
+            git \
+            gnutls-dev \
+            gperf \
+            haveged \
+            help2man \
+            intltool \
+            lib32gcc-s1 \
+            libc6-dev-i386 \
+            libelf-dev \
+            libglib2.0-dev \
+            libgmp3-dev \
+            libltdl-dev \
+            libmpc-dev \
+            libmpfr-dev \
+            libncurses-dev \
+            libpython3-dev \
+            libreadline-dev \
+            libssl-dev \
+            libtool \
+            libyaml-dev \
+            libz-dev \
+            lld \
+            llvm \
+            lrzsz \
+            mkisofs \
+            msmtp \
+            nano \
+            ninja-build \
+            p7zip \
+            p7zip-full \
+            patch \
+            pkgconf \
+            python3 \
+            python3-pip \
+            python3-ply \
+            python3-docutils \
+            python3-pyelftools \
+            qemu-utils \
+            re2c \
+            rsync \
+            scons \
+            squashfs-tools \
+            subversion \
+            swig \
+            texinfo \
+            uglifyjs \
+            unzip \
+            vim \
+            wget \
+            xmlto \
+            xxd \
+            zlib1g-dev \
+            zstd
+
+          df -h
+
+
+      # ============================================================
+      # 4. Update feeds
+      #
+      # 注意：
+      # 必须先删除 OpenWrt 自带旧版 Xray
+      # 再安装 feeds
+      # ============================================================
+
+      - name: Update feeds and setup Golang
         run: |
+
+          echo "============================================================"
+          echo "Update OpenWrt feeds"
+          echo "============================================================"
+
           ./scripts/feeds update -a
-          # 替换为支持最新 Xray-core 编译的高版本 Golang (Go 1.23+)
+
+
+          echo "============================================================"
+          echo "Remove OpenWrt bundled Xray / Sing-Box"
+          echo "============================================================"
+
+          rm -rf feeds/packages/net/xray-core
+          rm -rf feeds/packages/net/v2ray-core
+          rm -rf feeds/packages/net/v2ray-geodata
+          rm -rf feeds/packages/net/sing-box
+
+
+          echo "============================================================"
+          echo "Install Go 1.23.x"
+          echo "============================================================"
+
           rm -rf feeds/packages/lang/golang
-          git clone --depth=1 https://github.com/sbwml/packages_lang_golang -b 23.x feeds/packages/lang/golang
+
+          git clone \
+            --depth=1 \
+            -b 23.x \
+            https://github.com/sbwml/packages_lang_golang \
+            feeds/packages/lang/golang
+
+
+          echo "============================================================"
+          echo "Install feeds"
+          echo "============================================================"
+
           ./scripts/feeds install -a
 
-      - name: Clone PassWall
+
+      # ============================================================
+      # 5. Clone PassWall / Extra packages
+      # ============================================================
+
+      - name: Clone PassWall packages
         run: |
-          # 仅拉取 PassWall 并移除冲突插件
-          git clone --depth=1 https://github.com/sbwml/openwrt_helloworld.git package/helloworld
+
+          echo "============================================================"
+          echo "Clone sbwml openwrt_helloworld"
+          echo "============================================================"
+
+          rm -rf package/helloworld
+
+          git clone \
+            --depth=1 \
+            https://github.com/sbwml/openwrt_helloworld.git \
+            package/helloworld
+
+
+          echo "============================================================"
+          echo "Remove unwanted v2ray-plugin"
+          echo "============================================================"
+
           rm -rf package/helloworld/v2ray-plugin
 
-      - name: Load Official MT7981 Defconfig & Apply Custom Packages
+
+          echo "============================================================"
+          echo "Check Xray package"
+          echo "============================================================"
+
+          find package/helloworld \
+            -path '*/xray-core/Makefile' \
+            -print
+
+
+      # ============================================================
+      # 6. Lock Xray version
+      #
+      # 最重要步骤
+      #
+      # Xray 26.9.9
+      # >= PassWall2 minimum 26.3.27
+      # ============================================================
+
+      - name: Pin Xray Core to 26.9.9
         run: |
-          # 1. 使用仓库自带的完整 MT7981 官方闭源无线底包
-          if [ -f "defconfig/mt7981-ax3000.config" ]; then
-            cp -f defconfig/mt7981-ax3000.config .config
-          else
-            cp -f configs/nx30pro-nmbm.config .config
+
+          set -e
+
+          XRAY_DIR="package/helloworld/xray-core"
+          XRAY_MAKEFILE="${XRAY_DIR}/Makefile"
+
+          echo "============================================================"
+          echo "Check Xray package directory"
+          echo "============================================================"
+
+          if [ ! -d "${XRAY_DIR}" ]; then
+            echo "ERROR: ${XRAY_DIR} does not exist!"
+            echo ""
+            echo "Available Xray packages:"
+            find package/helloworld \
+              -type f \
+              -name Makefile \
+              -path '*xray*' \
+              -print
+
+            exit 1
           fi
 
-          # 2. 追加自定义 PassWall 与常用工具
-          cat <<EOF >> .config
-          CONFIG_TARGET_mediatek=y
-          CONFIG_TARGET_mediatek_filogic=y
-          CONFIG_TARGET_mediatek_filogic_DEVICE_h3c_magic-nx30-pro-nmbm=y
 
-          # ===== PassWall 核心 =====
-          # ===== 禁用 1 代 PassWall =====
-          # CONFIG_PACKAGE_luci-app-passwall is not set
+          if [ ! -f "${XRAY_MAKEFILE}" ]; then
+            echo "ERROR: Xray Makefile not found!"
+            exit 1
+          fi
 
-          # ===== 启用 2 代 PassWall (原生支持 Fake-IP) =====
-          CONFIG_PACKAGE_luci-app-passwall2=y
-          CONFIG_PACKAGE_luci-i18n-passwall2-zh-cn=y
-          CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_SingBox=y
-          CONFIG_PACKAGE_sing-box=y
-          CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Xray=y
-          CONFIG_PACKAGE_xray-core=y
-          # ===== 常用管理工具 =====
-          CONFIG_PACKAGE_luci-app-ttyd=y
-          CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y
-          CONFIG_PACKAGE_ttyd=y
-          CONFIG_PACKAGE_htop=y
-          CONFIG_PACKAGE_nano=y
-          CONFIG_PACKAGE_curl=y
-          CONFIG_PACKAGE_ca-bundle=y
-          CONFIG_PACKAGE_ca-certificates=y
-          EOF
 
-          # 3. 展开并补齐所有依赖
+          echo "Using Xray Makefile:"
+          echo "${XRAY_MAKEFILE}"
+
+
+          # ==========================================================
+          # 固定版本
+          # ==========================================================
+
+          sed -i \
+            's/^PKG_VERSION:=.*/PKG_VERSION:=26.9.9/' \
+            "${XRAY_MAKEFILE}"
+
+
+          # ==========================================================
+          # 固定源码下载地址
+          # ==========================================================
+
+          sed -i \
+            's#^PKG_SOURCE_URL:=.*#PKG_SOURCE_URL:=https://codeload.github.com/XTLS/Xray-core/tar.gz/v$(PKG_VERSION)?#' \
+            "${XRAY_MAKEFILE}"
+
+
+          # ==========================================================
+          # 固定源码 SHA256
+          #
+          # Xray 26.9.9
+          # ==========================================================
+
+          if grep -q '^PKG_HASH:=' "${XRAY_MAKEFILE}"; then
+
+            sed -i \
+              's/^PKG_HASH:=.*/PKG_HASH:=efb871a981690688191433a76beef7afdab6750d53cc1775cf8e9e995730ef22/' \
+              "${XRAY_MAKEFILE}"
+
+          else
+
+            sed -i \
+              '/^PKG_SOURCE_URL:=/a PKG_HASH:=efb871a981690688191433a76beef7afdab6750d53cc1775cf8e9e995730ef22' \
+              "${XRAY_MAKEFILE}"
+
+          fi
+
+
+          echo ""
+          echo "============================================================"
+          echo "FINAL XRAY MAKEFILE"
+          echo "============================================================"
+
+          grep -E \
+            '^(PKG_NAME|PKG_VERSION|PKG_RELEASE|PKG_SOURCE|PKG_SOURCE_URL|PKG_HASH)' \
+            "${XRAY_MAKEFILE}"
+
+
+          # ==========================================================
+          # 强制验证
+          # ==========================================================
+
+          XRAY_VERSION=$(grep '^PKG_VERSION:=' "${XRAY_MAKEFILE}" \
+            | head -1 \
+            | cut -d= -f2)
+
+          echo ""
+          echo "Xray package version = ${XRAY_VERSION}"
+
+
+          if [ "${XRAY_VERSION}" != "26.9.9" ]; then
+            echo "ERROR: Xray version is NOT 26.9.9!"
+            exit 1
+          fi
+
+
+      # ============================================================
+      # 7. Load target config
+      # ============================================================
+
+      - name: Load NX30 Pro NMBM configuration
+        run: |
+
+          set -e
+
+          echo "============================================================"
+          echo "Load NX30 Pro NMBM config"
+          echo "============================================================"
+
+
+          if [ -f "configs/nx30pro-nmbm.config" ]; then
+
+            cp -f \
+              configs/nx30pro-nmbm.config \
+              .config
+
+          elif [ -f "defconfig/mt7981-ax3000.config" ]; then
+
+            cp -f \
+              defconfig/mt7981-ax3000.config \
+              .config
+
+          else
+
+            echo "ERROR: No base config found!"
+
+            exit 1
+
+          fi
+
+
+          echo "============================================================"
+          echo "Append NX30 Pro / PassWall2 configuration"
+          echo "============================================================"
+
+
+          cat <<'EOF' >> .config
+
+
+# ============================================================
+# NX30 Pro NMBM target
+# ============================================================
+
+CONFIG_TARGET_mediatek=y
+CONFIG_TARGET_mediatek_filogic=y
+CONFIG_TARGET_mediatek_filogic_DEVICE_h3c_magic-nx30-pro-nmbm=y
+
+CONFIG_TARGET_BOARD="mediatek"
+CONFIG_TARGET_SUBTARGET="filogic"
+CONFIG_TARGET_PROFILE="DEVICE_h3c_magic-nx30-pro-nmbm"
+CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53"
+
+
+# ============================================================
+# PassWall2
+# ============================================================
+
+CONFIG_PACKAGE_luci-app-passwall2=y
+CONFIG_PACKAGE_luci-i18n-passwall2-zh-cn=y
+
+
+# ============================================================
+# Xray
+# ============================================================
+
+CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Xray=y
+CONFIG_PACKAGE_xray-core=y
+
+
+# ============================================================
+# Sing-Box
+# ============================================================
+
+CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_SingBox=y
+CONFIG_PACKAGE_sing-box=y
+
+
+# ============================================================
+# ChinaDNS-NG
+# ============================================================
+
+CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_ChinaDNS_NG=y
+CONFIG_PACKAGE_chinadns-ng=y
+
+
+# ============================================================
+# Geoview
+# ============================================================
+
+CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_V2ray_Geoview=y
+
+
+# ============================================================
+# Utilities
+# ============================================================
+
+CONFIG_PACKAGE_luci-app-ttyd=y
+CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y
+CONFIG_PACKAGE_ttyd=y
+CONFIG_PACKAGE_htop=y
+CONFIG_PACKAGE_nano=y
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_ca-bundle=y
+CONFIG_PACKAGE_ca-certificates=y
+
+EOF
+
+
+      # ============================================================
+      # 8. Defconfig
+      # ============================================================
+
+      - name: Run make defconfig
+        run: |
+
+          set -e
+
           make defconfig
+
+
+          echo "============================================================"
+          echo "FINAL TARGET"
+          echo "============================================================"
+
+          grep -E \
+            'CONFIG_TARGET_(mediatek|SUBTARGET|PROFILE|ARCH_PACKAGES)' \
+            .config || true
+
+
+          echo "============================================================"
+          echo "FINAL PASSWALL / XRAY CONFIG"
+          echo "============================================================"
+
+          grep -E \
+            'CONFIG_PACKAGE_(luci-app-passwall2|xray-core|sing-box|chinadns-ng)' \
+            .config || true
+
+
+          echo "============================================================"
+          echo "Xray Makefile after defconfig"
+          echo "============================================================"
+
+          grep -E \
+            '^(PKG_NAME|PKG_VERSION|PKG_RELEASE|PKG_SOURCE|PKG_SOURCE_URL|PKG_HASH)' \
+            package/helloworld/xray-core/Makefile
+
+
+          # ==========================================================
+          # 再次强制检查 Xray 版本
+          # ==========================================================
+
+          XRAY_VERSION=$(grep '^PKG_VERSION:=' \
+            package/helloworld/xray-core/Makefile \
+            | head -1 \
+            | cut -d= -f2)
+
+          if [ "${XRAY_VERSION}" != "26.9.9" ]; then
+            echo "ERROR: Xray version check failed!"
+            echo "Expected: 26.9.9"
+            echo "Actual:   ${XRAY_VERSION}"
+            exit 1
+          fi
+
+
+      # ============================================================
+      # 9. Download sources
+      # ============================================================
 
       - name: Download source packages
         run: |
+
+          set -e
+
           make download -j8
-          find dl -size -1024c -exec ls -l {} \;
-          find dl -size -1024c -exec rm -f {} \;
+
+
+          echo "============================================================"
+          echo "Check incomplete downloads"
+          echo "============================================================"
+
+          find dl \
+            -size -1024c \
+            -exec ls -lh {} \; \
+            || true
+
+
+          find dl \
+            -size -1024c \
+            -exec rm -f {} \; \
+            || true
+
+
+      # ============================================================
+      # 10. Build firmware
+      # ============================================================
 
       - name: Build firmware
         run: |
+
           set -o pipefail
-          make -j$(nproc) || make -j1 V=s
+
+          echo "============================================================"
+          echo "START BUILD"
+          echo "============================================================"
+
+
+          make -j$(nproc) V=s 2>&1 | tee build.log
+
+
+      # ============================================================
+      # 11. Verify Xray package
+      # ============================================================
+
+      - name: Verify Xray package
+        if: success()
+        run: |
+
+          set -e
+
+          echo "============================================================"
+          echo "SEARCH XRAY IPK"
+          echo "============================================================"
+
+          find bin \
+            -type f \
+            -name 'xray-core_*.ipk' \
+            -print
+
+
+          echo "============================================================"
+          echo "XRAY PACKAGE VERSION"
+          echo "============================================================"
+
+          XRAY_IPK=$(find bin \
+            -type f \
+            -name 'xray-core_*.ipk' \
+            | head -1)
+
+
+          if [ -z "${XRAY_IPK}" ]; then
+
+            echo "ERROR: xray-core IPK not found!"
+
+            exit 1
+
+          fi
+
+
+          echo "Xray IPK:"
+          echo "${XRAY_IPK}"
+
+
+          XRAY_PKG_VERSION=$(basename "${XRAY_IPK}" \
+            | sed -n 's/^xray-core_\\([0-9.]*\\)-.*/\\1/p')
+
+
+          echo ""
+          echo "Xray IPK version = ${XRAY_PKG_VERSION}"
+
+
+          if [ "${XRAY_PKG_VERSION}" != "26.9.9" ]; then
+
+            echo "ERROR: Generated Xray package is NOT 26.9.9!"
+
+            exit 1
+
+          fi
+
+
+          echo ""
+          echo "============================================================"
+          echo "XRAY PACKAGE CHECK PASSED"
+          echo "============================================================"
+
+          echo "Xray version: 26.9.9"
+          echo "Requirement : >= 26.3.27"
+          echo "Status      : PASS"
+
+
+      # ============================================================
+      # 12. Verify firmware manifest
+      # ============================================================
+
+      - name: Verify firmware manifest
+        if: success()
+        run: |
+
+          set -e
+
+          echo "============================================================"
+          echo "FIRMWARE MANIFEST"
+          echo "============================================================"
+
+
+          MANIFEST=$(find \
+            bin/targets/mediatek/filogic \
+            -maxdepth 1 \
+            -type f \
+            -name '*.manifest' \
+            | head -1)
+
+
+          if [ -z "${MANIFEST}" ]; then
+
+            echo "ERROR: Firmware manifest not found!"
+
+            exit 1
+
+          fi
+
+
+          echo "Manifest:"
+          echo "${MANIFEST}"
+
+
+          echo ""
+          echo "============================================================"
+          echo "XRAY IN FIRMWARE"
+          echo "============================================================"
+
+
+          grep -Ei \
+            '^xray-core ' \
+            "${MANIFEST}" \
+            || true
+
+
+          echo ""
+          echo "============================================================"
+          echo "PASSWALL2 IN FIRMWARE"
+          echo "============================================================"
+
+
+          grep -Ei \
+            'passwall2' \
+            "${MANIFEST}" \
+            || true
+
+
+          echo ""
+          echo "============================================================"
+          echo "SING-BOX IN FIRMWARE"
+          echo "============================================================"
+
+
+          grep -Ei \
+            '^sing-box ' \
+            "${MANIFEST}" \
+            || true
+
+
+          echo ""
+          echo "============================================================"
+          echo "FINAL XRAY CHECK"
+          echo "============================================================"
+
+
+          if ! grep -Eq \
+            '^xray-core 26\.9\.9' \
+            "${MANIFEST}"; then
+
+            echo "ERROR: Firmware manifest does not contain xray-core 26.9.9!"
+
+            exit 1
+
+          fi
+
+
+          echo ""
+          echo "Firmware Xray check PASSED."
+
+
+      # ============================================================
+      # 13. Show generated images
+      # ============================================================
 
       - name: Show generated images
         if: always()
         run: |
-          echo "==== NX30 outputs ===="
-          find bin/targets/mediatek/filogic -maxdepth 1 -type f | grep -Ei 'nx30|h3c' || true
+
+          echo "============================================================"
+          echo "NX30 PRO NMBM OUTPUTS"
+          echo "============================================================"
+
+
+          find \
+            bin/targets/mediatek/filogic \
+            -maxdepth 1 \
+            -type f \
+            -print \
+            | sort
+
+
+          echo ""
+          echo "============================================================"
+          echo "SYSUPGRADE IMAGES"
+          echo "============================================================"
+
+
+          find \
+            bin/targets/mediatek/filogic \
+            -maxdepth 1 \
+            -type f \
+            -name '*sysupgrade.bin' \
+            -exec ls -lh {} \; \
+            || true
+
+
+      # ============================================================
+      # 14. Upload firmware
+      # ============================================================
 
       - name: Upload firmware to Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ImmortalWrt_NX30Pro_Firmware
+          name: ImmortalWrt_NX30Pro_NMBM_Xray2699
           path: |
             bin/targets/mediatek/filogic/*sysupgrade.bin
             bin/targets/mediatek/filogic/*.manifest
+            bin/targets/mediatek/filogic/*.json
+            bin/packages/**/*.ipk
             .config
+            build.log
           if-no-files-found: error
+```
