@@ -207,5 +207,230 @@ jobs:
 
           mkdir -p package/custom/xray-core/files
 
-          c
-```
+          cat > package/custom/xray-core/files/config.json.example <<'EOF'
+          {
+            "log": {
+              "loglevel": "warning"
+            }
+          }
+          EOF
+
+          cat > package/custom/xray-core/files/xray.init <<'EOF'
+          #!/bin/sh /etc/rc.common
+
+          START=99
+
+          USE_PROCD=1
+
+          PROG="/usr/bin/xray"
+          CONF="/etc/xray/config.json"
+
+          start_service() {
+              [ -f "$CONF" ] || return 0
+
+              procd_open_instance
+              procd_set_param command "$PROG" run -config "$CONF"
+              procd_set_param file "$CONF"
+              procd_set_param respawn
+              procd_close_instance
+          }
+          EOF
+
+          chmod +x package/custom/xray-core/files/xray.init
+
+          echo "===== Xray package created ====="
+          cat package/custom/xray-core/Makefile
+
+      - name: Load target configuration
+        run: |
+          set -e
+
+          if [ -f "defconfig/mt7981-ax3000.config" ]; then
+            cp -f defconfig/mt7981-ax3000.config .config
+          elif [ -f "configs/nx30pro-nmbm.config" ]; then
+            cp -f configs/nx30pro-nmbm.config .config
+          else
+            echo "ERROR: target config not found"
+            exit 1
+          fi
+
+          cat >> .config <<'EOF'
+
+          CONFIG_TARGET_mediatek=y
+          CONFIG_TARGET_mediatek_filogic=y
+          CONFIG_TARGET_mediatek_filogic_DEVICE_h3c_magic-nx30-pro-nmbm=y
+
+          CONFIG_PACKAGE_kmod-cfg80211=y
+          CONFIG_PACKAGE_kmod-mac80211=y
+          CONFIG_PACKAGE_kmod-mt76-core=y
+          CONFIG_PACKAGE_kmod-mt76-connac=y
+          CONFIG_PACKAGE_kmod-mt7915e=y
+          CONFIG_PACKAGE_kmod-mt7981-firmware=y
+          CONFIG_PACKAGE_mt7981-wo-firmware=y
+
+          CONFIG_PACKAGE_wpad-openssl=y
+          CONFIG_PACKAGE_hostapd-common=y
+          CONFIG_PACKAGE_wireless-regdb=y
+          CONFIG_PACKAGE_iw=y
+          CONFIG_PACKAGE_iwinfo=y
+
+          # CONFIG_PACKAGE_kmod-mt_wifi is not set
+          # CONFIG_PACKAGE_kmod-conninfra is not set
+          # CONFIG_PACKAGE_kmod-warp is not set
+          # CONFIG_PACKAGE_kmod-mtk-warp is not set
+          # CONFIG_PACKAGE_luci-app-mtwifi-cfg is not set
+          # CONFIG_PACKAGE_luci-i18n-mtwifi-cfg-zh-cn is not set
+          # CONFIG_PACKAGE_luci-app-turboacc-mtk is not set
+
+          CONFIG_PACKAGE_kmod-mediatek_hnat=y
+          CONFIG_PACKAGE_luci-app-turboacc=y
+          CONFIG_PACKAGE_luci-i18n-turboacc-zh-cn=y
+          CONFIG_PACKAGE_luci-app-turboacc_INCLUDE_OFFLOADING=y
+          CONFIG_PACKAGE_luci-app-turboacc_INCLUDE_BBR_CCA=y
+
+          CONFIG_PACKAGE_luci=y
+          CONFIG_PACKAGE_luci-base=y
+          CONFIG_PACKAGE_luci-compat=y
+          CONFIG_PACKAGE_luci-light=y
+          CONFIG_PACKAGE_luci-theme-argon=y
+
+          CONFIG_LUCI_LANG_zh_Hans=y
+          CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+          CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+          CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
+          CONFIG_PACKAGE_default-settings-chn=y
+
+          CONFIG_PACKAGE_luci-app-ttyd=y
+          CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y
+          CONFIG_PACKAGE_ttyd=y
+          CONFIG_PACKAGE_htop=y
+          CONFIG_PACKAGE_nano=y
+          CONFIG_PACKAGE_curl=y
+          CONFIG_PACKAGE_ca-bundle=y
+          CONFIG_PACKAGE_ca-certificates=y
+
+          # ===== PassWall2 =====
+          CONFIG_PACKAGE_luci-app-passwall2=y
+          CONFIG_PACKAGE_luci-i18n-passwall2-zh-cn=y
+          CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_SingBox=y
+          CONFIG_PACKAGE_sing-box=y
+
+          # Xray-core 由 package/custom/xray-core 提供
+          CONFIG_PACKAGE_xray-core=y
+
+          CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Xray=y
+
+          CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_ChinaDNS_NG=y
+          CONFIG_PACKAGE_chinadns-ng=y
+
+          CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_V2ray_Geoview=y
+
+          # ===== dnsmasq-full =====
+          # CONFIG_PACKAGE_dnsmasq is not set
+          CONFIG_PACKAGE_dnsmasq-full=y
+          CONFIG_PACKAGE_dnsmasq_full_nftset=y
+          CONFIG_PACKAGE_dnsmasq_full_ipset=y
+
+          CONFIG_PACKAGE_ipset=y
+          CONFIG_PACKAGE_kmod-ipt-ipset=y
+          CONFIG_PACKAGE_kmod-ipt-nat=y
+          CONFIG_PACKAGE_kmod-ipt-tproxy=y
+          CONFIG_PACKAGE_kmod-nft-tproxy=y
+          CONFIG_PACKAGE_kmod-nft-socket=y
+          CONFIG_PACKAGE_kmod-nft-nat=y
+          CONFIG_PACKAGE_iptables-mod-tproxy=y
+          CONFIG_PACKAGE_iptables-mod-extra=y
+          CONFIG_PACKAGE_kmod-bonding=y
+          CONFIG_PACKAGE_kmod-netlink-diag=y
+          CONFIG_PACKAGE_kmod-ipt-fullconenat=y
+          EOF
+
+          echo "===== Running make defconfig ====="
+          make defconfig
+
+      - name: Verify Xray package selection
+        run: |
+          set -e
+
+          echo "===== Xray CONFIG ====="
+          grep -E '^CONFIG_PACKAGE_(xray-core|luci-app-passwall2)' .config || true
+
+          echo "===== Xray package Makefile ====="
+          grep -E 'PKG_(NAME|VERSION|RELEASE|SOURCE_VERSION)' \
+            package/custom/xray-core/Makefile
+
+      - name: Download source packages
+        run: |
+          set -e
+
+          make download -j8
+
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Build firmware
+        run: |
+          set -o pipefail
+
+          make -j$(nproc) 2>&1 | tee build.log || {
+            echo "===== Parallel build failed, retrying single-threaded ====="
+            make -j1 V=s 2>&1 | tee build-single.log
+          }
+
+      - name: Verify generated Xray
+        if: always()
+        run: |
+          set +e
+
+          echo "===== Search generated Xray packages ====="
+
+          find bin/packages \
+            -type f \
+            -iname '*xray*' \
+            -print 2>/dev/null || true
+
+          echo "===== Search build artifacts ====="
+
+          find bin \
+            -type f \
+            -iname '*xray*' \
+            -print 2>/dev/null || true
+
+          echo "===== Check Xray build directory ====="
+
+          find build_dir \
+            -type f \
+            -name xray \
+            -print 2>/dev/null | head -20 || true
+
+      - name: Show generated images
+        if: always()
+        run: |
+          echo "==== NX30 outputs ===="
+
+          find bin/targets/mediatek/filogic \
+            -maxdepth 1 \
+            -type f \
+            -print | sort
+
+          echo "==== NX30 firmware ===="
+
+          find bin/targets/mediatek/filogic \
+            -maxdepth 1 \
+            -type f \
+            \( -name '*sysupgrade.bin' -o -name '*.manifest' \) \
+            -print | sort
+
+      - name: Upload firmware to Artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ImmortalWrt_NX30Pro_Firmware
+          path: |
+            bin/targets/mediatek/filogic/*sysupgrade.bin
+            bin/targets/mediatek/filogic/*.manifest
+            .config
+            build.log
+            build-single.log
+          if-no-files-found: error
+
